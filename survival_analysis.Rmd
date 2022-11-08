@@ -1,0 +1,25 @@
+---
+title: "Survival Group Project"
+author: "Yujin Zhang"
+date: '2022-11-08'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(survival)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load Data
+
+
+```{r}
+lung
+data(cancer, package="survival")
+
+cancer_df=cancer
+```
+
+## Including Plots
