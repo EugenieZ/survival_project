@@ -8,18 +8,99 @@ output: html_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(survival)
+library(ggplot2)
+library(ggfortify)
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Load Data
 
-
-```{r}
+```{r, message=FALSE}
 lung
 data(cancer, package="survival")
 
 cancer_df=cancer
+head(cancer_df, 7)
 ```
 
-## Including Plots
+Dataset Attributes Overview:  
+*inst:	    Institute Code  
+*time:	    Survival time in days  
+*status:	  Censoring status; 1= censored; 2 = dead  
+*age:	    Age of the subject in years  
+*ph.ecog:  Ecog performance score; 0: good, 5: dead  
+*ph.karno: Karnofsky performance score; 0: bad; 100: good rated by physician  
+*pat.karno:Karnofsky performance score as rated by patient  
+*meal.cal:	Calories consumed at meals  
+*wt.loss:	Weight loss in last six months  
+
+Next, clean the data
+```{r}
+map(cancer_df, ~sum(is.na(.))) # count missing value
+
+# add event variable where censor=0 and death=1
+cancer_df = cancer_df %>% 
+  mutate( event = ifelse(status > 1, 1, 0),
+          sex = as.factor(sex)
+  )
+```
+
+
+# Kaplan-Meier survival estimation & Nelson-Aalen hazard estimation 
+
+## Kaplan-Meier survival estimation
+```{r}
+km_fit = survfit(Surv(time, event) ~ 1, data = cancer_df)
+summary(km_fit)
+
+#plot M-K 
+autoplot(km_fit)
+
+# observe median survival time
+print(km_fit) 
+```
+The median survival time of this KM estimator is 310 days.
+
+## look at survival curves by sex.
+```{r}
+km_sex = survfit(Surv(time, event) ~ sex, data = cancer_df)
+summary(km_fit)
+
+#plot M-K 
+autoplot(km_sex)    #plot(km_sex, xlab="Days", main = 'Kaplan Meyer Plot')
+
+# observe median survival time
+print(km_sex)
+
+
+```
+The median survival time for male(sex=1) is 270 days, and the median survival time for female(sex=2) is 426 days.
+
+
+
+## Nelson-Aalen hazard estimation 
+```{r}
+nelsonaalen <- function(data, timevar, statusvar) {
+  if (!is.data.frame(data)) {
+    stop("Data must be a data frame")
+  }
+  timevar <- as.character(substitute(timevar))
+  statusvar <- as.character(substitute(statusvar))
+  time <- data[, timevar, drop = TRUE]
+  status <- data[, statusvar, drop = TRUE]
+
+  hazard <- survival::basehaz(survival::coxph(survival::Surv(time, status) ~ 1))
+  idx <- match(time, hazard[, "time"])
+  hazard[idx, "hazard"]
+}
+
+hazard = nelsonaalen(cancer_df, time, event)
+plot(x = cancer_df$time, y = hazard, ylab = "Cumulative hazard", xlab = "Time")
+```
+
+# Log-rank hypothesis test
+First, apply log-rank test on sex
+
+
+# Cox Proportional Hazards Model
